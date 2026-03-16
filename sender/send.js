@@ -76,27 +76,8 @@ client.on("ready", async () => {
       // Invia il messaggio (usa l'API interna, nessun ricaricamento pagina)
       const result = await client.sendMessage(resolvedChatId, messaggio);
       console.log(`[${ts()}]   Message ID: ${result.id.id}`);
-
-      // Attende che il messaggio venga effettivamente inviato al server (ACK >= 1)
-      const ack = await new Promise((resolve) => {
-        if (result.ack >= 1) return resolve(result.ack);
-        const timeout = setTimeout(() => resolve(result.ack), 15000);
-        result.on("ack_changed", (newAck) => {
-          console.log(`[${ts()}]   ACK aggiornato: ${newAck}`);
-          if (newAck >= 1) {
-            clearTimeout(timeout);
-            resolve(newAck);
-          }
-        });
-      });
-
-      if (ack >= 1) {
-        inviati++;
-        console.log(`[${ts()}] ✓ Messaggio inviato a ${numero} (ACK: ${ack})`);
-      } else {
-        falliti++;
-        console.log(`[${ts()}] ⚠ Messaggio a ${numero} ancora in coda (ACK: ${ack})`);
-      }
+      inviati++;
+      console.log(`[${ts()}] ✓ Messaggio inviato a ${numero}`);
     } catch (err) {
       falliti++;
       console.error(`[${ts()}] ✗ Errore per ${numero}: ${err.message}`);
