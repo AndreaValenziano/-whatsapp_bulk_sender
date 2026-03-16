@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Invio WhatsApp</title>
+  <link rel="icon" href="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" type="image/svg+xml">
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 500px;
+      margin: 40px auto;
+      background-color: #f0f2f5;
+      padding: 20px;
+      border-radius: 10px;
+    }
+    .container {
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    textarea, input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      box-sizing: border-box; /* Assicura che il padding non sformi la larghezza */
+    }
+    button {
+      padding: 12px;
+      width: 100%;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 5px;
+    }
+    .btn-start {
+      background-color: #25D366;
+      color: white;
+      font-weight: bold;
+    }
+    .btn-start:hover {
+      background-color: #1ebc57;
+    }
+    .btn-next {
+      background-color: #0084ff;
+      color: white;
+      font-weight: bold;
+      display: none; /* Nascosto all'inizio */
+      margin-top: 15px;
+    }
+    .btn-next:hover {
+      background-color: #0073e6;
+    }
+    label {
+      font-weight: bold;
+      color: #333;
+    }
+    #stato {
+      margin-top: 15px;
+      padding: 10px;
+      background-color: #e9f7ef;
+      border: 1px solid #c3e6cb;
+      border-radius: 5px;
+      color: #155724;
+      display: none; /* Nascosto all'inizio */
+      text-align: center;
+    }
+    .warning {
+      color: #666; 
+      font-size: 0.85em;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2 style="text-align: center; color: #128C7E;">Invio Messaggi WhatsApp</h2>
+  
+  <label for="numeri">1. Inserisci i Numeri (uno per riga, senza +39):</label>
+  <textarea id="numeri" rows="6" placeholder="es. 3471234567&#10;3489876543"></textarea>
+
+  <label for="messaggio">2. Scrivi il Messaggio:</label>
+  <textarea id="messaggio" rows="4" placeholder="Scrivi qui il messaggio (le emoji funzionano! 😀)"></textarea>
+
+  <button onclick="preparaMessaggi()" class="btn-start">Inizia Configurazione</button>
+
+  <!-- Area Statistiche -->
+  <div id="stato">
+    <span id="counterText">In attesa...</span>
+  </div>
+
+  <button onclick="apriProssimo()" id="btnProssimo" class="btn-next">Invia al Prossimo Numero ➡</button>
+  
+  <p class="warning">⚠️ Cliccando "Prossimo", si aprirà una nuova scheda con WhatsApp Web.</p>
+</div>
+
+<script>
+    let listaNumeri = [];
+    let messaggioEncoded = "";
+    let indice = 0;
+
+    function preparaMessaggi() {
+      // Pulisce e prepara la lista numeri
+      const rawNumeri = document.getElementById("numeri").value;
+      listaNumeri = rawNumeri.split("\n").map(n => n.trim()).filter(n => n !== "");
+
+      // Codifica il messaggio per URL (gestisce spazi ed emoji)
+      const rawMessaggio = document.getElementById("messaggio").value;
+      
+      // Controllo validità
+      if (listaNumeri.length === 0) {
+        alert("Inserisci almeno un numero valido.");
+        return;
+      }
+      if (!rawMessaggio) {
+        alert("Inserisci un messaggio.");
+        return;
+      }
+
+      // EncodeURIComponent è il metodo standard JS per rendere le emoji sicure negli URL
+      messaggioEncoded = encodeURIComponent(rawMessaggio);
+      
+      // Reset indice
+      indice = 0;
+
+      // Mostra UI di avanzamento
+      document.getElementById("btnProssimo").style.display = "block";
+      document.getElementById("stato").style.display = "block";
+      aggiornaContatore();
+      
+      alert(`Caricati ${listaNumeri.length} numeri. Premi "Invia al Prossimo Numero" per procedere uno alla volta.`);
+    }
+
+    function apriProssimo() {
+      if (indice >= listaNumeri.length) {
+        alert("🎉 Hai completato l'invio a tutti i numeri della lista!");
+        document.getElementById("btnProssimo").style.display = "none";
+        document.getElementById("counterText").innerText = "Tutti i messaggi sono stati inviati.";
+        return;
+      }
+
+      const numero = listaNumeri[indice];
+      // Usiamo api.whatsapp.com che è spesso più robusto per le codifiche rispetto a wa.me
+      const url = `https://api.whatsapp.com/send?phone=39${numero}&text=${messaggioEncoded}`;
+
+      // Apre in una nuova tab (_blank)
+      window.open(url, "_blank");
+
+      // Incrementa indice e aggiorna grafica
+      indice++;
+      aggiornaContatore();
+    }
+
+    function aggiornaContatore() {
+      const totale = listaNumeri.length;
+      const rimanenti = totale - indice;
+      
+      const testo = `Messaggio ${indice + 1} di ${totale}<br>
+                     <small>(Inviati: ${indice} | Mancanti: ${rimanenti})</small>`;
+      
+      document.getElementById("counterText").innerHTML = testo;
+      
+      // Se abbiamo finito, aggiorniamo il testo del bottone o lo nascondiamo
+      if (indice >= totale) {
+         document.getElementById("counterText").innerHTML = `<strong>COMPLETATO!</strong><br>Inviati: ${totale} su ${totale}`;
+         document.getElementById("btnProssimo").style.display = "none";
+      }
+    }
+</script>
+
+</body>
+</html>

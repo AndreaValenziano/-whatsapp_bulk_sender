@@ -1,0 +1,10 @@
+{
+  "prefisso": "39",
+  "numeri": [
+    "3471234567",
+    "3489876543"
+  ],
+  "messaggio": "Ciao! *Questo è un messaggio di test* 😊",
+  "delayMinSec": 5,
+  "delayMaxSec": 10
+}

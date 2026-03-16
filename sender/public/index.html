@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WhatsApp Bulk Sender</title>
+  <link rel="icon" href="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" type="image/svg+xml">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f0f2f5;
+      min-height: 100vh;
+    }
+    .header {
+      background-color: #128C7E;
+      color: white;
+      padding: 16px 20px;
+      text-align: center;
+      font-size: 20px;
+      font-weight: bold;
+    }
+    .main {
+      max-width: 600px;
+      margin: 30px auto;
+      padding: 0 16px;
+    }
+    .card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+    textarea, input[type="number"] {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 14px;
+      resize: vertical;
+      transition: border-color 0.2s;
+    }
+    textarea:focus, input[type="number"]:focus {
+      outline: none;
+      border-color: #25D366;
+    }
+    .field { margin-bottom: 18px; }
+    .row {
+      display: flex;
+      gap: 12px;
+    }
+    .row .field { flex: 1; }
+    .hint {
+      color: #888;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .btn-start {
+      background-color: #25D366;
+      color: white;
+    }
+    .btn-start:hover:not(:disabled) {
+      background-color: #1ebc57;
+    }
+    .btn-stop {
+      background-color: #e74c3c;
+      color: white;
+      margin-top: 10px;
+    }
+    .btn-stop:hover:not(:disabled) {
+      background-color: #c0392b;
+    }
+    .log-container {
+      display: none;
+    }
+    .log-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .log-header h3 { color: #333; }
+    .status {
+      font-size: 13px;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-weight: 600;
+    }
+    .status-running {
+      background-color: #fff3cd;
+      color: #856404;
+    }
+    .status-done {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    .status-error {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+    #log {
+      background-color: #1a1a2e;
+      color: #e0e0e0;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 12px;
+      line-height: 1.4;
+      padding: 14px;
+      border-radius: 6px;
+      max-height: 400px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .format-help {
+      font-size: 12px;
+      color: #666;
+      background: #f8f9fa;
+      padding: 10px 12px;
+      border-radius: 6px;
+      margin-top: 6px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">WhatsApp Bulk Sender</div>
+
+<div class="main">
+  <div class="card">
+    <div class="field">
+      <label for="numeri">Numeri di telefono (uno per riga, senza +39)</label>
+      <textarea id="numeri" rows="6" placeholder="3471234567&#10;3489876543&#10;3331112233"></textarea>
+    </div>
+
+    <div class="field">
+      <label for="messaggio">Messaggio</label>
+      <textarea id="messaggio" rows="5" placeholder="Scrivi qui il messaggio..."></textarea>
+      <div class="format-help">
+        Formattazione: <b>*grassetto*</b> &nbsp; <i>_corsivo_</i> &nbsp; <s>~barrato~</s> &nbsp; <code>```codice```</code>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="delayMin">Delay min (sec)</label>
+        <input type="number" id="delayMin" value="5" min="1">
+      </div>
+      <div class="field">
+        <label for="delayMax">Delay max (sec)</label>
+        <input type="number" id="delayMax" value="10" min="1">
+      </div>
+    </div>
+
+    <button class="btn btn-start" id="btnStart" onclick="avviaInvio()">Avvia Invio</button>
+    <button class="btn btn-stop" id="btnStop" onclick="fermaInvio()" style="display:none">Ferma Invio</button>
+  </div>
+
+  <div class="card log-container" id="logContainer">
+    <div class="log-header">
+      <h3>Log</h3>
+      <span class="status" id="statusBadge"></span>
+    </div>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<script>
+  let eventSource = null;
+
+  async function avviaInvio() {
+    const rawNumeri = document.getElementById("numeri").value;
+    const messaggio = document.getElementById("messaggio").value;
+    const delayMinSec = parseInt(document.getElementById("delayMin").value) || 5;
+    const delayMaxSec = parseInt(document.getElementById("delayMax").value) || 10;
+
+    const numeri = rawNumeri.split("\n").map(n => n.trim()).filter(n => n !== "");
+
+    if (numeri.length === 0) {
+      alert("Inserisci almeno un numero.");
+      return;
+    }
+    if (!messaggio.trim()) {
+      alert("Inserisci un messaggio.");
+      return;
+    }
+
+    // Mostra log
+    document.getElementById("logContainer").style.display = "block";
+    document.getElementById("log").textContent = "";
+    setStatus("running", "In corso...");
+    document.getElementById("btnStart").disabled = true;
+    document.getElementById("btnStop").style.display = "block";
+
+    try {
+      const res = await fetch("/api/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ numeri, messaggio, prefisso: "39", delayMinSec, delayMaxSec }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Errore");
+        resetUI();
+        return;
+      }
+
+      // Connetti SSE
+      if (eventSource) eventSource.close();
+      eventSource = new EventSource("/api/logs");
+
+      eventSource.onmessage = (e) => {
+        appendLog(e.data);
+      };
+
+      eventSource.addEventListener("done", (e) => {
+        appendLog("\n" + e.data);
+        const isError = e.data.includes("codice:");
+        setStatus(isError ? "error" : "done", isError ? "Errore" : "Completato");
+        eventSource.close();
+        eventSource = null;
+        document.getElementById("btnStop").style.display = "none";
+        document.getElementById("btnStart").disabled = false;
+      });
+
+      eventSource.onerror = () => {
+        setStatus("error", "Connessione persa");
+        eventSource.close();
+        eventSource = null;
+        resetUI();
+      };
+    } catch (err) {
+      alert("Errore di connessione: " + err.message);
+      resetUI();
+    }
+  }
+
+  async function fermaInvio() {
+    if (!confirm("Sei sicuro di voler fermare l'invio?")) return;
+    try {
+      await fetch("/api/stop", { method: "POST" });
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  function appendLog(text) {
+    const log = document.getElementById("log");
+    log.textContent += text + "\n";
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function setStatus(type, text) {
+    const badge = document.getElementById("statusBadge");
+    badge.textContent = text;
+    badge.className = "status status-" + type;
+  }
+
+  function resetUI() {
+    document.getElementById("btnStart").disabled = false;
+    document.getElementById("btnStop").style.display = "none";
+  }
+</script>
+
+</body>
+</html>

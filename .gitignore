@@ -1,0 +1,6 @@
+node_modules/
+sender/config.json
+sender/whatsapp-session/
+sender/whatsapp-profile/
+sender/.wwebjs_auth/
+sender/.wwebjs_cache/
